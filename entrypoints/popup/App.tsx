@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import './App.css';
+import logo from '../../assets/logo.png';
+import { IconMonitor, IconSelection, IconFile } from '../editor/Icons';
 
 type CaptureMode = 'visible' | 'selection' | 'fullpage';
 
@@ -21,7 +23,9 @@ function App() {
       if (response?.success) {
         setStatus('Opening editor...');
         // Close popup after successful capture
-        window.close();
+        setTimeout(() => {
+          window.close();
+        }, 500);
       } else {
         setStatus(response?.error || 'Capture failed');
         setIsCapturing(false);
@@ -35,7 +39,7 @@ function App() {
   return (
     <div className="popup-container">
       <header className="popup-header">
-        <h1>📸 Screenshot Editor</h1>
+        <img src={logo} alt="Screenshot Editor Pro" className="brand-logo" />
       </header>
 
       <div className="capture-modes">
@@ -44,9 +48,11 @@ function App() {
           onClick={() => handleCapture('visible')}
           disabled={isCapturing}
         >
-          <span className="icon">🖥️</span>
-          <span className="label">Visible Page</span>
-          <span className="desc">Capture current viewport</span>
+          <span className="icon"><IconMonitor /></span>
+          <div className="content">
+            <span className="label">Visible Viewport</span>
+            <span className="desc">Capture what's on screen</span>
+          </div>
         </button>
 
         <button
@@ -54,9 +60,11 @@ function App() {
           onClick={() => handleCapture('selection')}
           disabled={isCapturing}
         >
-          <span className="icon">✂️</span>
-          <span className="label">Select Area</span>
-          <span className="desc">Draw selection rectangle</span>
+          <span className="icon"><IconSelection /></span>
+          <div className="content">
+            <span className="label">Selected Area</span>
+            <span className="desc">Draw a custom rectangle</span>
+          </div>
         </button>
 
         <button
@@ -64,9 +72,11 @@ function App() {
           onClick={() => handleCapture('fullpage')}
           disabled={isCapturing}
         >
-          <span className="icon">📄</span>
-          <span className="label">Full Page</span>
-          <span className="desc">Capture entire page</span>
+          <span className="icon"><IconFile /></span>
+          <div className="content">
+            <span className="label">Entire Page</span>
+            <span className="desc">Capture from top to bottom</span>
+          </div>
         </button>
       </div>
 

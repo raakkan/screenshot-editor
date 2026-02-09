@@ -1,14 +1,16 @@
-/* Popup Styles */
+/* Popup Styles - Light Minimalistic Overhaul */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
 :root {
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --bg-dark: #1e1e2e;
-  --bg-card: #2a2a3e;
-  --bg-card-hover: #35354d;
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0b8;
-  --border-radius: 12px;
-  --shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --brand-primary: #6366f1;
+  --brand-primary-hover: #4f46e5;
+  --bg-main: #ffffff;
+  --bg-surface: #f9fafb;
+  --text-main: #111827;
+  --text-dim: #6b7280;
+  --border-main: #e5e7eb;
+  --radius-md: 12px;
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 * {
@@ -18,10 +20,11 @@
 }
 
 body {
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  background: var(--bg-dark);
-  color: var(--text-primary);
-  min-width: 320px;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+  min-width: 300px;
+  overflow: hidden;
 }
 
 .popup-container {
@@ -29,43 +32,48 @@ body {
 }
 
 .popup-header {
-  text-align: center;
   margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.popup-header h1 {
-  font-size: 1.4rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.brand-logo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
 }
 
 .capture-modes {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .capture-btn {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 16px;
-  background: var(--bg-card);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--border-radius);
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
+  width: 100%;
 }
 
 .capture-btn:hover:not(:disabled) {
-  background: var(--bg-card-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow);
-  border-color: var(--primary);
+  border-color: var(--brand-primary);
+  background: #ffffff;
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.capture-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .capture-btn:disabled {
@@ -74,59 +82,62 @@ body {
 }
 
 .capture-btn .icon {
-  font-size: 1.5rem;
-  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 10px;
+  color: var(--brand-primary);
+  transition: all 0.2s ease;
+}
+
+.capture-btn:hover .icon {
+  background: var(--brand-primary);
+  color: #ffffff;
+}
+
+.capture-btn .content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .capture-btn .label {
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
 }
 
 .capture-btn .desc {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  margin-top: 2px;
-}
-
-/* Individual button accent colors */
-.capture-btn.visible:hover:not(:disabled) {
-  border-color: #22c55e;
-}
-
-.capture-btn.selection:hover:not(:disabled) {
-  border-color: #f59e0b;
-}
-
-.capture-btn.fullpage:hover:not(:disabled) {
-  border-color: #3b82f6;
+  font-size: 12px;
+  color: var(--text-dim);
 }
 
 .status {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   margin-top: 16px;
-  padding: 12px;
-  background: rgba(99, 102, 241, 0.1);
+  padding: 10px;
+  background: rgba(99, 102, 241, 0.05);
+  border: 1px solid rgba(99, 102, 241, 0.1);
   border-radius: 8px;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--brand-primary);
 }
 
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(99, 102, 241, 0.3);
-  border-top-color: var(--primary);
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--brand-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }

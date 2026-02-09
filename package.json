@@ -2,7 +2,7 @@
   "name": "screenshot-editor",
   "description": "Capture & edit screenshots with visible page, select area, and full page modes",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -15,8 +15,10 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "konva": "^10.2.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.3",
+    "react-konva": "^19.2.2"
   },
   "devDependencies": {
     "@types/react": "^19.2.7",

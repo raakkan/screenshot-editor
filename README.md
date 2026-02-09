@@ -1,8 +1,8 @@
-# Screenshot Editor
+# Screenshot Editor Pro
 
 A powerful browser extension for capturing and editing screenshots with multiple capture modes, built with WXT and React.
 
-![Screenshot Editor](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Screenshot Editor Pro](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ## Features
@@ -95,7 +95,7 @@ screenshot-editor/
 │   ├── background.ts      # Service worker for capture logic
 │   ├── content.ts         # Content script for area selection
 │   ├── popup/             # Extension popup UI
-│   └── editor/            # Screenshot editor UI
+│   └── editor/            # Screenshot editor Pro UI
 ├── public/
 │   └── icon/              # Extension icons
 ├── wxt.config.ts          # WXT configuration
@@ -106,6 +106,7 @@ screenshot-editor/
 
 - Full page capture may not work perfectly on sites with complex infinite scroll (like social media feeds)
 - Some sites with strict Content Security Policies may block the content script
+- **MSN and similar sites**: Full page capture shows duplicate sticky navigation bars. These sites use JavaScript-controlled positioning instead of CSS `position: fixed/sticky`, making it difficult to detect and hide headers during capture.
 
 ## Contributing
 
@@ -123,6 +124,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Roadmap
 
+- [ ] **Fix sticky navigation detection for MSN-like sites** - Sites using JavaScript-controlled sticky headers need better detection (shadow DOM inspection, scroll event monitoring, or use image-based duplicate detection)
 - [ ] Keyboard shortcuts for tools
 - [ ] Shape fill options
 - [ ] Multiple text styles (bold, italic)
