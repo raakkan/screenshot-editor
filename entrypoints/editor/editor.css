@@ -15,6 +15,7 @@
   --radius-md: 6px;
   --header-height: 56px;
   --sidebar-width: 280px;
+  --toolbar-width: 52px;
 }
 
 * {
@@ -62,28 +63,40 @@ body {
   object-fit: contain;
 }
 
-/* Center Toolbar - Integrated */
+/* Vertical Toolbar - Left Side */
+.editor-left-toolbar {
+  width: var(--toolbar-width);
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-main);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  z-index: 90;
+}
+
 .center-toolbar {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  background: var(--bg-elevated);
-  padding: 4px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-main);
+  gap: 8px;
+  width: 100%;
 }
 
 .tool-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--text-dim);
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
 }
 
 .tool-btn:hover {
@@ -97,24 +110,53 @@ body {
 }
 
 .tool-btn .btn-label {
-  font-size: 13px;
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1f2937;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s;
+  z-index: 1000;
+}
+
+.tool-btn:hover .btn-label {
+  opacity: 1;
+  transform: translateY(-50%) translateX(4px);
+}
+
+.tool-btn .btn-label::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border-width: 4px 4px 4px 0;
+  border-style: solid;
+  border-color: transparent #1f2937 transparent transparent;
 }
 
 .v-divider {
-  width: 1px;
-  height: 20px;
+  width: 24px;
+  height: 1px;
   background: var(--border-main);
-  margin: 0 4px;
+  margin: 4px 0;
 }
 
 /* Color Tool in header */
 .color-tool {
   position: relative;
-  width: 24px;
-  height: 24px;
-  margin: 0 8px;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  margin: 4px 0;
+  border-radius: var(--radius-md);
   overflow: hidden;
   border: 1px solid var(--border-main);
 }
@@ -175,6 +217,31 @@ body {
 
 .header-actions button.btn-primary:hover {
   background: var(--brand-primary-hover);
+}
+
+.side-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: 1px solid var(--border-main);
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.side-tool-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-main);
+}
+
+.side-tool-btn.active {
+  background: var(--brand-primary);
+  color: white;
+  border-color: var(--brand-primary);
 }
 
 /* Header Presets Dropdown Unified */
@@ -746,7 +813,8 @@ body {
   padding: 8px 12px;
   color: var(--text-main);
   outline: none;
-  min-width: 200px;
+  width: 280px;
+  font-size: 14px;
 }
 
 .text-actions {

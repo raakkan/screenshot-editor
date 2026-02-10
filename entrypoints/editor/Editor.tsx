@@ -9,10 +9,10 @@ import {
     IconCircle, IconType, IconBlur, IconTrash, IconEye,
     IconEyeOff, IconPlus, IconMinus, IconRotateCcw, IconCheck, IconClose,
     IconAlert, IconAlignLeft, IconAlignCenter, IconAlignRight, IconCase,
-    IconBookmark, IconLayers, IconSettings, IconRefresh
+    IconBookmark, IconLayers, IconSettings, IconRefresh, IconImage
 } from './Icons';
 
-type Tool = 'crop' | 'pencil' | 'line' | 'arrow' | 'rectangle' | 'circle' | 'text' | 'blur';
+type Tool = 'crop' | 'pencil' | 'line' | 'arrow' | 'rectangle' | 'circle' | 'text' | 'blur' | 'image';
 
 interface DrawingElement {
     id: string;
@@ -43,6 +43,7 @@ interface DrawingElement {
     lineHeight?: number;
     textCase?: 'none' | 'uppercase' | 'capitalize';
     align?: string;
+    imageSrc?: string;
 }
 
 interface Preset {
@@ -128,10 +129,32 @@ const PixelatedBlur: React.FC<{
     return <KonvaImage {...commonProps} image={blurredImage} width={width} height={height} />;
 };
 
+const ImageElement: React.FC<{
+    src: string;
+    commonProps: any;
+    width?: number;
+    height?: number;
+}> = ({ src, commonProps, width, height }) => {
+    const [img, setImg] = React.useState<HTMLImageElement | null>(null);
+
+    React.useEffect(() => {
+        const image = new Image();
+        image.src = src;
+        image.onload = () => {
+            setImg(image);
+        };
+    }, [src]);
+
+    if (!img) return null;
+
+    return <KonvaImage {...commonProps} image={img} width={width} height={height} />;
+};
+
 function Editor() {
     const stageRef = useRef<Konva.Stage>(null);
     const transformerRef = useRef<Konva.Transformer>(null);
     const textInputRef = useRef<HTMLInputElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const canvasContainerRef = useRef<HTMLDivElement>(null);
     const activeFontLoads = useRef<Set<string>>(new Set());
 
@@ -757,6 +780,45 @@ function Editor() {
         showToast(`Template "${preset.name}" active`, 'success');
     };
 
+    const triggerImageUpload = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const src = event.target?.result as string;
+            const img = new Image();
+            img.onload = () => {
+                const newElement: DrawingElement = {
+                    id: `element-${Date.now()}`,
+                    type: 'image',
+                    x: 50,
+                    y: 50,
+                    width: img.width > 500 ? 500 : img.width,
+                    height: img.width > 500 ? (img.height * (500 / img.width)) : img.height,
+                    imageSrc: src,
+                    visible: true,
+                    name: `Image ${elementCounter}`,
+                    color: '#000',
+                    strokeWidth: 0,
+                    opacity: 1,
+                };
+                const newElements = [...elements, newElement];
+                setElements(newElements);
+                setElementCounter(prev => prev + 1);
+                addToHistory(newElements);
+                showToast('Image added', 'success');
+            };
+            img.src = src;
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    };
+
     const undo = () => {
         if (historyIndex > 0) {
             setHistoryIndex(historyIndex - 1);
@@ -829,6 +891,7 @@ function Editor() {
             case 'circle': return <IconCircle />;
             case 'text': return <IconType />;
             case 'blur': return <IconBlur />;
+            case 'image': return <IconImage />;
             default: return null;
         }
     };
@@ -842,6 +905,7 @@ function Editor() {
         { id: 'circle', icon: <IconCircle />, label: 'Circle' },
         { id: 'text', icon: <IconType />, label: 'Text' },
         { id: 'blur', icon: <IconBlur />, label: 'Blur' },
+        { id: 'image', icon: <IconImage />, label: 'Image' },
     ];
 
     if (error) return <div className="editor-loading"><p><IconAlert /> {error}</p></div>;
@@ -872,6 +936,7 @@ function Editor() {
             case 'blur': return <PixelatedBlur image={image} x={el.x} y={el.y} width={el.width || 0} height={el.height || 0} pixelSize={12} commonProps={commonProps} />;
             case 'circle': return <Ellipse {...commonProps} radiusX={(el.width || 0) / 2} radiusY={(el.height || 0) / 2} stroke={el.color} strokeWidth={el.strokeWidth} fill={el.filled ? el.color + '4D' : 'rgba(0,0,0,0.05)'} offsetX={-(el.width || 0) / 2} offsetY={-(el.height || 0) / 2} />;
             case 'text': return <Text {...commonProps} key={`${el.id}-${el.fontFamily}-${el.fontSize}-${loadedFonts.includes(el.fontFamily || 'Inter')}`} text={transformText(el.text || '', el.textCase)} fontSize={el.fontSize || 24} fontFamily={el.fontFamily || 'Inter'} fontStyle="bold" fill={el.color} stroke={el.strokeColor} strokeWidth={el.strokeWidth > 1 ? el.strokeWidth / 5 : 0} shadowColor={el.shadowColor} shadowBlur={el.shadowBlur} shadowOffsetX={el.shadowOffset} shadowOffsetY={el.shadowOffset} letterSpacing={el.letterSpacing} lineHeight={el.lineHeight} align={el.align} />;
+            case 'image': return <ImageElement src={el.imageSrc || ''} commonProps={commonProps} width={el.width} height={el.height} />;
             default: return null;
         }
     };
@@ -881,26 +946,6 @@ function Editor() {
             <header className="editor-header">
                 <div className="header-left">
                     <img src={logo} alt="Screenshot Editor Pro" className="brand-logo" />
-                </div>
-                <div className="center-toolbar">
-                    {tools.map(t => (
-                        <button key={t.id} className={`tool-btn ${tool === t.id ? 'active' : ''}`} onClick={() => setTool(t.id)} title={t.label}>
-                            <span className="icon">{t.icon}</span>
-                            <span className="btn-label">{t.label}</span>
-                        </button>
-                    ))}
-                    <div className="v-divider"></div>
-                    {tool !== 'blur' && tool !== 'crop' && (
-                        <div className="color-tool">
-                            <input type="color" value={color} onChange={(e) => { setColor(e.target.value); setActivePresetId(null); }} className="color-input" />
-                            <div className="color-preview" style={{ backgroundColor: color }}></div>
-                        </div>
-                    )}
-                    {['rectangle', 'circle'].includes(tool) && (
-                        <button className={`btn-toolbar ${filled ? 'active' : ''}`} onClick={() => { setFilled(!filled); setActivePresetId(null); }} title="Fill Shape">
-                            Fill
-                        </button>
-                    )}
                 </div>
                 <div className="header-actions">
                     <div className="templates-menu-wrapper" ref={templatesRef}>
@@ -973,6 +1018,29 @@ function Editor() {
             </header>
 
             <main className="editor-main">
+                <aside className="editor-left-toolbar">
+                    <div className="center-toolbar">
+                        {tools.map(t => (
+                            <button key={t.id} className={`tool-btn ${tool === t.id ? 'active' : ''}`} onClick={() => t.id === 'image' ? triggerImageUpload() : setTool(t.id)} title={t.label}>
+                                <span className="icon">{t.icon}</span>
+                                <span className="btn-label">{t.label}</span>
+                            </button>
+                        ))}
+                        <div className="v-divider"></div>
+                        {tool !== 'blur' && tool !== 'crop' && (
+                            <div className="color-tool">
+                                <input type="color" value={color} onChange={(e) => { setColor(e.target.value); setActivePresetId(null); }} className="color-input" />
+                                <div className="color-preview" style={{ backgroundColor: color }}></div>
+                            </div>
+                        )}
+                        {['rectangle', 'circle'].includes(tool) && (
+                            <button className={`side-tool-btn ${filled ? 'active' : ''}`} onClick={() => { setFilled(!filled); setActivePresetId(null); }} title="Fill Shape">
+                                <IconCheck />
+                            </button>
+                        )}
+                    </div>
+                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} accept="image/*" onChange={handleImageFileChange} />
+                </aside>
                 <div className="canvas-area">
                     <div className="canvas-viewport" ref={canvasContainerRef}>
                         <div className="canvas-stage-wrapper" style={{ minWidth: stageSize.width * zoom }}>
@@ -1006,7 +1074,7 @@ function Editor() {
 
                         {textInput.visible && (
                             <div className="floating-text-input" style={{ left: textInput.x * zoom, top: textInput.y * zoom }}>
-                                <input ref={textInputRef} type="text" value={textValue} onChange={(e) => setTextValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); if (e.key === 'Escape') setTextInput(prev => ({ ...prev, visible: false })); }} style={{ color, fontSize: `${fontSize * zoom}px`, fontFamily }} />
+                                <input ref={textInputRef} type="text" value={textValue} onChange={(e) => setTextValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); if (e.key === 'Escape') setTextInput(prev => ({ ...prev, visible: false })); }} placeholder="Type something..." />
                                 <div className="text-actions">
                                     <button onClick={handleTextSubmit} title="Confirm"><IconCheck /></button>
                                     <button onClick={() => setTextInput(prev => ({ ...prev, visible: false }))} title="Cancel"><IconClose /></button>
@@ -1056,10 +1124,23 @@ function Editor() {
                                 return (
                                     <div className="prop-list">
                                         <div className="prop-row"><label>Name</label><input type="text" value={el.name} onChange={(e) => updateElementProperty(el.id, { name: e.target.value })} /></div>
-                                        {el.type !== 'blur' && (
+                                        {el.type !== 'blur' && el.type !== 'image' && (
                                             <div className="prop-row"><label>Color</label><div className="color-pick-field"><input type="color" value={el.color} onChange={(e) => updateElementProperty(el.id, { color: e.target.value })} /><span className="hex">{(el.color || '#000').toUpperCase()}</span></div></div>
                                         )}
                                         <div className="prop-row"><label>Opacity ({Math.round((el.opacity ?? 1) * 100)}%)</label><input type="range" min="0" max="100" value={(el.opacity ?? 1) * 100} onChange={(e) => updateElementProperty(el.id, { opacity: parseInt(e.target.value) / 100 })} /></div>
+
+                                        {['pencil', 'line', 'arrow', 'rectangle', 'circle'].includes(el.type) && (
+                                            <div className="prop-row">
+                                                <label>Stroke Size ({el.strokeWidth}px)</label>
+                                                <input
+                                                    type="range"
+                                                    min="1"
+                                                    max="50"
+                                                    value={el.strokeWidth}
+                                                    onChange={(e) => updateElementProperty(el.id, { strokeWidth: parseInt(e.target.value) })}
+                                                />
+                                            </div>
+                                        )}
 
                                         {el.type === 'text' && (
                                             <>
