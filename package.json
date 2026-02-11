@@ -2,7 +2,7 @@
   "name": "screenshot-editor",
   "description": "Capture & edit screenshots with visible page, select area, and full page modes",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",
