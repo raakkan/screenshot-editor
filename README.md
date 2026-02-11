@@ -2,7 +2,7 @@
 
 A powerful browser extension for capturing and editing screenshots with multiple capture modes, built with WXT and React.
 
-![Screenshot Editor Pro](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Screenshot Editor Pro](https://img.shields.io/badge/version-1.2.1-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ## Features
