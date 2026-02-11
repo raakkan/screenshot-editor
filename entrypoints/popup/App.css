@@ -2,8 +2,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
 :root {
-  --brand-primary: #6366f1;
-  --brand-primary-hover: #4f46e5;
+  --brand-primary: #a173fe;
+  --brand-primary-hover: #8e5ceb;
   --bg-main: #ffffff;
   --bg-surface: #f9fafb;
   --text-main: #111827;
@@ -87,7 +87,7 @@ body {
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(161, 115, 254, 0.08);
   border-radius: 10px;
   color: var(--brand-primary);
   transition: all 0.2s ease;
@@ -121,8 +121,8 @@ body {
   gap: 10px;
   margin-top: 16px;
   padding: 10px;
-  background: rgba(99, 102, 241, 0.05);
-  border: 1px solid rgba(99, 102, 241, 0.1);
+  background: rgba(161, 115, 254, 0.05);
+  border: 1px solid rgba(161, 115, 254, 0.1);
   border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
@@ -132,12 +132,14 @@ body {
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(99, 102, 241, 0.2);
+  border: 2px solid rgba(161, 115, 254, 0.2);
   border-top-color: var(--brand-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }

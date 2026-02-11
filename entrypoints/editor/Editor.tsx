@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useLayoutEffect } from 'react';
 import { Stage, Layer, Image as KonvaImage, Line, Arrow, Rect, Ellipse, Text, Transformer } from 'react-konva';
 import Konva from 'konva';
 import './editor.css';
@@ -164,8 +164,8 @@ function Editor() {
     const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
 
     const [tool, setTool] = useState<Tool>('crop');
-    const [color, setColor] = useState('#6366f1');
-    const [strokeWidth, setStrokeWidth] = useState(3);
+    const [color, setColor] = useState('#a173fe');
+    const [strokeWidth, setStrokeWidth] = useState(18);
     const [filled, setFilled] = useState(false);
 
     const [opacity, setOpacity] = useState(1);
@@ -174,7 +174,7 @@ function Editor() {
     const [pointerAtStart, setPointerAtStart] = useState(false);
 
     const [fontFamily, setFontFamily] = useState('Inter');
-    const [fontSize, setFontSize] = useState(24);
+    const [fontSize, setFontSize] = useState(80);
     const [bgColor, setBgColor] = useState('#ffffff');
     const [strokeColor, setStrokeColor] = useState('#000000');
     const [shadowBlur, setShadowBlur] = useState(0);
@@ -200,6 +200,12 @@ function Editor() {
         x: 0, y: 0, visible: false, editingId: null
     });
     const [textValue, setTextValue] = useState('');
+    const [popupCorrection, setPopupCorrection] = useState({ x: 0, y: 0 });
+    const [viewportScroll, setViewportScroll] = useState({ left: 0, top: 0 });
+    const [isCursorVisible, setIsCursorVisible] = useState(true);
+    const floatingInputRef = useRef<HTMLDivElement>(null);
+    const canvasViewportRef = useRef<HTMLDivElement>(null);
+    const previewTextRef = useRef<Konva.Text>(null);
 
     const [zoom, setZoom] = useState(0.5); // Start with 0.5 to ensure visibility
     const [elementCounter, setElementCounter] = useState(1);
@@ -217,12 +223,102 @@ function Editor() {
 
     const templatesRef = useRef<HTMLDivElement>(null);
 
+    const toolSettingsRef = useRef<Record<Tool, Partial<DrawingElement>>>({
+        crop: {},
+        pencil: { color: '#000000', strokeWidth: 18, opacity: 1 },
+        line: { color: '#000000', strokeWidth: 18, opacity: 1, dash: [10, 5] },
+        arrow: { color: '#000000', strokeWidth: 18, opacity: 1, pointerAtStart: false },
+        rectangle: { color: '#000000', strokeWidth: 18, opacity: 1, filled: false },
+        circle: { color: '#000000', strokeWidth: 18, opacity: 1, filled: false },
+        text: {
+            color: '#000000', fontSize: 80, fontFamily: 'Inter', align: 'left',
+            strokeWidth: 0, strokeColor: '#000000', bgColor: '#ffffff',
+            shadowBlur: 0, shadowOffset: 0, shadowColor: '#000000',
+            letterSpacing: 0, lineHeight: 1.2, textCase: 'none'
+        },
+        blur: {},
+        image: {}
+    });
+
     const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info') => {
         const id = Math.random().toString(36).substr(2, 9);
         setToasts(prev => [...prev, { id, message, type }]);
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
         }, 3000);
+    };
+
+
+    // Persist settings when they change
+    useEffect(() => {
+        if (!tool || tool === 'crop' || tool === 'image' || tool === 'blur') return;
+
+        const currentSettings = toolSettingsRef.current[tool] || {};
+        const newSettings: Partial<DrawingElement> = { ...currentSettings };
+
+        // Common
+        newSettings.color = color;
+        newSettings.strokeWidth = strokeWidth;
+        newSettings.opacity = opacity;
+
+        // Specifics
+        if (tool === 'rectangle' || tool === 'circle') {
+            newSettings.filled = filled;
+        }
+        if (tool === 'line' || tool === 'arrow' || tool === 'pencil' || tool === 'rectangle' || tool === 'circle') {
+            newSettings.dash = dashEnabled ? dashStyle : undefined;
+        }
+        if (tool === 'arrow') {
+            newSettings.pointerAtStart = pointerAtStart;
+        }
+        if (tool === 'text') {
+            newSettings.fontFamily = fontFamily;
+            newSettings.fontSize = fontSize;
+            newSettings.align = align;
+            newSettings.bgColor = bgColor;
+            newSettings.strokeColor = strokeColor;
+            newSettings.shadowBlur = shadowBlur;
+            newSettings.shadowOffset = shadowOffset;
+            newSettings.shadowColor = shadowColor;
+            newSettings.letterSpacing = letterSpacing;
+            newSettings.lineHeight = lineHeight;
+            newSettings.textCase = textCase;
+        }
+
+        toolSettingsRef.current[tool] = newSettings;
+    }, [tool, color, strokeWidth, opacity, filled, dashEnabled, dashStyle, pointerAtStart, fontFamily, fontSize, align, bgColor, strokeColor, shadowBlur, shadowOffset, shadowColor, letterSpacing, lineHeight, textCase]);
+
+    const loadToolSettings = (t: Tool) => {
+        const settings = toolSettingsRef.current[t];
+        if (!settings) return;
+
+        if (settings.color !== undefined) setColor(settings.color);
+        if (settings.strokeWidth !== undefined) setStrokeWidth(settings.strokeWidth);
+        if (settings.opacity !== undefined) setOpacity(settings.opacity);
+        if (settings.filled !== undefined) setFilled(settings.filled);
+
+        if (settings.dash) {
+            setDashEnabled(true);
+            if (Array.isArray(settings.dash)) setDashStyle(settings.dash);
+        } else {
+            setDashEnabled(false);
+        }
+
+        if (settings.pointerAtStart !== undefined) setPointerAtStart(settings.pointerAtStart);
+
+        if (t === 'text') {
+            if (settings.fontFamily !== undefined) setFontFamily(settings.fontFamily);
+            if (settings.fontSize !== undefined) setFontSize(settings.fontSize);
+            if (settings.align !== undefined) setAlign(settings.align as any);
+            if (settings.bgColor !== undefined) setBgColor(settings.bgColor);
+            if (settings.strokeColor !== undefined) setStrokeColor(settings.strokeColor);
+            if (settings.shadowBlur !== undefined) setShadowBlur(settings.shadowBlur);
+            if (settings.shadowOffset !== undefined) setShadowOffset(settings.shadowOffset);
+            if (settings.shadowColor !== undefined) setShadowColor(settings.shadowColor);
+            if (settings.letterSpacing !== undefined) setLetterSpacing(settings.letterSpacing);
+            if (settings.lineHeight !== undefined) setLineHeight(settings.lineHeight);
+            if (settings.textCase !== undefined) setTextCase(settings.textCase as any);
+        }
     };
 
     useEffect(() => {
@@ -405,12 +501,83 @@ function Editor() {
         }
     }, [textInput.visible]);
 
+    useLayoutEffect(() => {
+        if (textInput.visible && floatingInputRef.current && canvasContainerRef.current) {
+            const popup = floatingInputRef.current;
+            const viewport = canvasContainerRef.current;
+
+            const vRect = viewport.getBoundingClientRect();
+
+            // Calculate baseline absolute position within viewport
+            // We need to account for stage-wrapper margin: 0 auto and padding: 30px
+            const stageWrapper = viewport.querySelector('.canvas-stage-wrapper');
+            if (!stageWrapper) return;
+            const swRect = stageWrapper.getBoundingClientRect();
+
+            // Correct position relative to viewport (including scroll)
+            const targetX = swRect.left + (textInput.x * zoom);
+            const targetY = swRect.top + (textInput.y * zoom);
+
+            // Let's set the popup position simply by setting its style in the effect for max performance
+            // or use the state if we want to keep it "React-y". Let's use state for simplicity since it's already there.
+
+            // Now calculate corrections to keep it inside vRect
+            const pWidth = 300; // Expected width from CSS
+            const pHeight = 80;  // Expected height from CSS
+
+            let dx = 0;
+            let dy = 0;
+
+            const buffer = 40;
+
+            if (targetX - pWidth / 2 < vRect.left + buffer) {
+                dx = (vRect.left + buffer) - (targetX - pWidth / 2);
+            } else if (targetX + pWidth / 2 > vRect.right - buffer) {
+                dx = (vRect.right - buffer) - (targetX + pWidth / 2);
+            }
+
+            if (targetY - pHeight < vRect.top + buffer) {
+                dy = (vRect.top + buffer) - (targetY - pHeight);
+            } else if (targetY > vRect.bottom - buffer) {
+                dy = (vRect.bottom - buffer) - targetY;
+            }
+
+            setPopupCorrection({ x: dx, y: dy });
+        } else {
+            setPopupCorrection({ x: 0, y: 0 });
+        }
+    }, [textInput.visible, textInput.x, textInput.y, zoom, viewportScroll]);
+
+    // Track scroll
+    useEffect(() => {
+        const viewport = canvasContainerRef.current;
+        if (!viewport) return;
+
+        const handleScroll = () => {
+            setViewportScroll({ left: viewport.scrollLeft, top: viewport.scrollTop });
+        };
+
+        viewport.addEventListener('scroll', handleScroll, { passive: true });
+        return () => viewport.removeEventListener('scroll', handleScroll);
+    }, []);
+
     useEffect(() => {
         if (tool !== 'crop') {
             setCropRect(null);
             setIsCropping(false);
         }
     }, [tool]);
+
+    // Cursor blinking effect
+    useEffect(() => {
+        if (!textInput.visible) return;
+
+        const interval = setInterval(() => {
+            setIsCursorVisible(prev => !prev);
+        }, 500);
+
+        return () => clearInterval(interval);
+    }, [textInput.visible]);
 
     const updateElementProperty = (id: string, updates: Partial<DrawingElement>, saveToHistory = true) => {
         const newElements = elements.map(el =>
@@ -596,14 +763,33 @@ function Editor() {
             setTool(el.type);
 
             // Sync current tool states with element properties for editing consistency
+            if (el.color) setColor(el.color);
+            if (el.strokeWidth !== undefined) setStrokeWidth(el.strokeWidth);
+            if (el.opacity !== undefined) setOpacity(el.opacity);
+            if (el.filled !== undefined) setFilled(el.filled);
+
+            if (el.dash) {
+                setDashEnabled(true);
+                if (Array.isArray(el.dash)) setDashStyle(el.dash);
+            } else {
+                setDashEnabled(false);
+            }
+
+            if (el.pointerAtStart !== undefined) setPointerAtStart(el.pointerAtStart);
+
             if (el.type === 'text') {
                 if (el.fontFamily) setFontFamily(el.fontFamily);
                 if (el.fontSize) setFontSize(el.fontSize);
                 if (el.textCase) setTextCase(el.textCase);
                 if (el.align) setAlign(el.align as any);
+                if (el.bgColor) setBgColor(el.bgColor);
+                if (el.strokeColor) setStrokeColor(el.strokeColor);
+                if (el.shadowBlur !== undefined) setShadowBlur(el.shadowBlur);
+                if (el.shadowOffset !== undefined) setShadowOffset(el.shadowOffset);
+                if (el.shadowColor) setShadowColor(el.shadowColor);
+                if (el.letterSpacing !== undefined) setLetterSpacing(el.letterSpacing);
+                if (el.lineHeight !== undefined) setLineHeight(el.lineHeight);
             }
-            setColor(el.color);
-            setFilled(el.filled || false);
 
             if (el.type === 'text' && tool === 'text') {
                 setTextInput({ x: el.x, y: el.y, visible: true, editingId: id });
@@ -920,7 +1106,7 @@ function Editor() {
     };
 
     const renderElement = (el: DrawingElement) => {
-        if (!el.visible) return null;
+        if (!el.visible || (textInput.visible && textInput.editingId === el.id)) return null;
         const commonProps: any = {
             key: el.id, id: el.id, x: el.x, y: el.y, draggable: true, opacity: el.opacity ?? 1, dash: el.dash,
             onMouseDown: (e: any) => { e.cancelBubble = true; handleElementClick(el.id); },
@@ -935,7 +1121,7 @@ function Editor() {
             case 'rectangle': return <Rect {...commonProps} width={el.width} height={el.height} stroke={el.color} strokeWidth={el.strokeWidth} fill={el.filled ? el.color + '4D' : 'rgba(0,0,0,0.05)'} />;
             case 'blur': return <PixelatedBlur image={image} x={el.x} y={el.y} width={el.width || 0} height={el.height || 0} pixelSize={12} commonProps={commonProps} />;
             case 'circle': return <Ellipse {...commonProps} radiusX={(el.width || 0) / 2} radiusY={(el.height || 0) / 2} stroke={el.color} strokeWidth={el.strokeWidth} fill={el.filled ? el.color + '4D' : 'rgba(0,0,0,0.05)'} offsetX={-(el.width || 0) / 2} offsetY={-(el.height || 0) / 2} />;
-            case 'text': return <Text {...commonProps} key={`${el.id}-${el.fontFamily}-${el.fontSize}-${loadedFonts.includes(el.fontFamily || 'Inter')}`} text={transformText(el.text || '', el.textCase)} fontSize={el.fontSize || 24} fontFamily={el.fontFamily || 'Inter'} fontStyle="bold" fill={el.color} stroke={el.strokeColor} strokeWidth={el.strokeWidth > 1 ? el.strokeWidth / 5 : 0} shadowColor={el.shadowColor} shadowBlur={el.shadowBlur} shadowOffsetX={el.shadowOffset} shadowOffsetY={el.shadowOffset} letterSpacing={el.letterSpacing} lineHeight={el.lineHeight} align={el.align} />;
+            case 'text': return <Text {...commonProps} key={`${el.id}-${el.fontFamily}-${el.fontSize}-${loadedFonts.includes(el.fontFamily || 'Inter')}`} text={transformText(el.text || '', el.textCase)} fontSize={el.fontSize || 24} fontFamily={el.fontFamily || 'Inter'} fontStyle="bold" fill={el.color} stroke={el.strokeColor || el.color} strokeWidth={el.strokeWidth || 0} shadowColor={el.shadowColor} shadowBlur={el.shadowBlur} shadowOffsetX={el.shadowOffset} shadowOffsetY={el.shadowOffset} letterSpacing={el.letterSpacing} lineHeight={el.lineHeight} align={el.align} />;
             case 'image': return <ImageElement src={el.imageSrc || ''} commonProps={commonProps} width={el.width} height={el.height} />;
             default: return null;
         }
@@ -1021,7 +1207,14 @@ function Editor() {
                 <aside className="editor-left-toolbar">
                     <div className="center-toolbar">
                         {tools.map(t => (
-                            <button key={t.id} className={`tool-btn ${tool === t.id ? 'active' : ''}`} onClick={() => t.id === 'image' ? triggerImageUpload() : setTool(t.id)} title={t.label}>
+                            <button key={t.id} className={`tool-btn ${tool === t.id ? 'active' : ''}`} onClick={() => {
+                                if (t.id === 'image') {
+                                    triggerImageUpload();
+                                } else {
+                                    setTool(t.id);
+                                    loadToolSettings(t.id);
+                                }
+                            }} title={t.label}>
                                 <span className="icon">{t.icon}</span>
                                 <span className="btn-label">{t.label}</span>
                             </button>
@@ -1059,6 +1252,85 @@ function Editor() {
                                     <KonvaImage image={image} id="background-image" width={stageSize.width} height={stageSize.height} />
                                     {elements.map(renderElement)}
                                     {currentElement && renderElement(currentElement)}
+
+                                    {/* Live Text Preview & Cursor */}
+                                    {textInput.visible && (
+                                        <>
+                                            <Text
+                                                ref={previewTextRef}
+                                                x={textInput.x}
+                                                y={textInput.y}
+                                                text={transformText(textValue || ' ', (textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.textCase : textCase) || 'none')}
+                                                fontSize={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.fontSize : fontSize) || 32}
+                                                fontFamily={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.fontFamily : fontFamily) || 'Inter'}
+                                                fontStyle="bold"
+                                                fill={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.color : color) || '#000000'}
+                                                stroke={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.strokeColor : strokeColor) || (textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.color : color)}
+                                                strokeWidth={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.strokeWidth : strokeWidth) || 0}
+                                                shadowColor={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.shadowColor : shadowColor) || 'transparent'}
+                                                shadowBlur={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.shadowBlur : shadowBlur) || 0}
+                                                shadowOffsetX={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.shadowOffset : shadowOffset) || 0}
+                                                shadowOffsetY={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.shadowOffset : shadowOffset) || 0}
+                                                letterSpacing={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.letterSpacing : letterSpacing) || 0}
+                                                lineHeight={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.lineHeight : lineHeight) || 1.2}
+                                                align={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.align : align) || 'left'}
+                                                verticalAlign="middle"
+                                                offsetX={(() => {
+                                                    const node = previewTextRef.current;
+                                                    if (!node) return 0;
+                                                    const a = (textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.align : align) || 'left';
+                                                    if (a === 'center') return node.width() / 2;
+                                                    if (a === 'right') return node.width();
+                                                    return 0;
+                                                })()}
+                                                offsetY={(() => {
+                                                    const node = previewTextRef.current;
+                                                    return node ? node.height() / 2 : 0;
+                                                })()}
+                                                draggable={true}
+                                                onDragMove={(e) => {
+                                                    setTextInput(prev => ({ ...prev, x: e.target.x(), y: e.target.y() }));
+                                                    if (textInput.editingId) {
+                                                        updateElementProperty(textInput.editingId, { x: e.target.x(), y: e.target.y() }, false);
+                                                    }
+                                                }}
+                                                onDragEnd={(e) => {
+                                                    setTextInput(prev => ({ ...prev, x: e.target.x(), y: e.target.y() }));
+                                                    if (textInput.editingId) {
+                                                        updateElementProperty(textInput.editingId, { x: e.target.x(), y: e.target.y() }, true);
+                                                    }
+                                                }}
+                                                onMouseDown={(e) => { e.cancelBubble = true; if (textInput.editingId) handleElementClick(textInput.editingId); }}
+                                                onMouseEnter={(e) => {
+                                                    const container = e.target.getStage()?.container();
+                                                    if (container) container.style.cursor = 'move';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    const container = e.target.getStage()?.container();
+                                                    if (container) container.style.cursor = 'default';
+                                                }}
+                                            />
+                                            {isCursorVisible && (
+                                                <Rect
+                                                    x={(() => {
+                                                        const node = previewTextRef.current;
+                                                        if (!node) return textInput.x;
+                                                        const a = (textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.align : align) || 'left';
+                                                        const w = node.width();
+                                                        if (a === 'center') return textInput.x + w / 2 + 2;
+                                                        if (a === 'right') return textInput.x + 2;
+                                                        return textInput.x + w + 2;
+                                                    })()}
+                                                    y={textInput.y - (previewTextRef.current?.height() ? previewTextRef.current.height() / 4 : 10)}
+                                                    width={2}
+                                                    height={previewTextRef.current?.height() ? previewTextRef.current.height() / 2 : 20}
+                                                    fill={(textInput.editingId ? elements.find(e => e.id === textInput.editingId)?.color : color) || '#000000'}
+                                                    listening={false}
+                                                />
+                                            )}
+                                        </>
+                                    )}
+
                                     {cropRect && <Rect x={cropRect.width < 0 ? cropRect.x + cropRect.width : cropRect.x} y={cropRect.height < 0 ? cropRect.y + cropRect.height : cropRect.y} width={Math.abs(cropRect.width)} height={Math.abs(cropRect.height)} stroke="var(--brand-primary)" strokeWidth={2 / zoom} fill="rgba(99, 102, 241, 0.1)" dash={[5, 5]} />}
                                     <Transformer ref={transformerRef} boundBoxFunc={(oldBox, newBox) => (newBox.width < 5 || newBox.height < 5) ? oldBox : newBox} />
                                 </Layer>
@@ -1069,16 +1341,6 @@ function Editor() {
                             <div className="crop-floating-actions" style={{ left: (cropRect.width < 0 ? cropRect.x + cropRect.width : cropRect.x) * zoom, top: (cropRect.y + (cropRect.height < 0 ? 0 : cropRect.height)) * zoom + 10 }}>
                                 <button onClick={applyCrop} className="apply-btn"><IconCheck /> Apply</button>
                                 <button onClick={cancelCrop} className="cancel-btn"><IconClose /> Cancel</button>
-                            </div>
-                        )}
-
-                        {textInput.visible && (
-                            <div className="floating-text-input" style={{ left: textInput.x * zoom, top: textInput.y * zoom }}>
-                                <input ref={textInputRef} type="text" value={textValue} onChange={(e) => setTextValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); if (e.key === 'Escape') setTextInput(prev => ({ ...prev, visible: false })); }} placeholder="Type something..." />
-                                <div className="text-actions">
-                                    <button onClick={handleTextSubmit} title="Confirm"><IconCheck /></button>
-                                    <button onClick={() => setTextInput(prev => ({ ...prev, visible: false }))} title="Cancel"><IconClose /></button>
-                                </div>
                             </div>
                         )}
                     </div>
@@ -1127,6 +1389,7 @@ function Editor() {
                                         {el.type !== 'blur' && el.type !== 'image' && (
                                             <div className="prop-row"><label>Color</label><div className="color-pick-field"><input type="color" value={el.color} onChange={(e) => updateElementProperty(el.id, { color: e.target.value })} /><span className="hex">{(el.color || '#000').toUpperCase()}</span></div></div>
                                         )}
+
                                         <div className="prop-row"><label>Opacity ({Math.round((el.opacity ?? 1) * 100)}%)</label><input type="range" min="0" max="100" value={(el.opacity ?? 1) * 100} onChange={(e) => updateElementProperty(el.id, { opacity: parseInt(e.target.value) / 100 })} /></div>
 
                                         {['pencil', 'line', 'arrow', 'rectangle', 'circle'].includes(el.type) && (
@@ -1228,6 +1491,31 @@ function Editor() {
                                                 </div>
 
                                                 <div className="sidebar-divider"></div>
+                                                <label className="section-subtitle">Stroke Settings</label>
+                                                <div className="prop-row">
+                                                    <label>Stroke Width ({el.strokeWidth || 0}px)</label>
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="20"
+                                                        value={el.strokeWidth || 0}
+                                                        onChange={(e) => updateElementProperty(el.id, { strokeWidth: parseInt(e.target.value) })}
+                                                    />
+                                                </div>
+                                                <div className="prop-row">
+                                                    <label>Stroke Color</label>
+                                                    <div className="color-pick-field">
+                                                        <input
+                                                            type="color"
+                                                            value={el.strokeColor || el.color}
+                                                            onChange={(e) => updateElementProperty(el.id, { strokeColor: e.target.value })}
+                                                        />
+                                                        <span className="hex">{(el.strokeColor || el.color).toUpperCase()}</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="sidebar-divider"></div>
+
                                                 <label className="section-subtitle">Shadow Settings</label>
 
                                                 <div className="prop-row">
@@ -1286,6 +1574,41 @@ function Editor() {
                     </div>
                 ))}
             </div>
+
+            {textInput.visible && (
+                <div
+                    ref={floatingInputRef}
+                    className="floating-text-input"
+                    style={{
+                        position: 'fixed',
+                        left: (() => {
+                            const viewport = canvasContainerRef.current;
+                            if (!viewport) return 0;
+                            const sw = viewport.querySelector('.canvas-stage-wrapper');
+                            if (!sw) return 0;
+                            const r = sw.getBoundingClientRect();
+                            return r.left + (textInput.x * zoom) + popupCorrection.x;
+                        })(),
+                        top: (() => {
+                            const viewport = canvasContainerRef.current;
+                            if (!viewport) return 0;
+                            const sw = viewport.querySelector('.canvas-stage-wrapper');
+                            if (!sw) return 0;
+                            const r = sw.getBoundingClientRect();
+                            return r.top + (textInput.y * zoom) + popupCorrection.y;
+                        })(),
+                        transform: 'translate(-50%, -100%)',
+                        zIndex: 9999,
+                        marginTop: '-20px'
+                    }}
+                >
+                    <input ref={textInputRef} type="text" value={textValue} onChange={(e) => setTextValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); if (e.key === 'Escape') setTextInput(prev => ({ ...prev, visible: false })); }} placeholder="Type something..." />
+                    <div className="text-actions">
+                        <button onClick={handleTextSubmit} title="Confirm"><IconCheck /></button>
+                        <button onClick={() => setTextInput(prev => ({ ...prev, visible: false }))} title="Cancel"><IconClose /></button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
