@@ -6,7 +6,7 @@ export default defineConfig({
   manifest: {
     name: 'Screenshot Editor Pro',
     description: 'Capture & edit screenshots with visible page, select area, and full page modes',
-    version: '1.2.1',
+    version: '1.2.2',
     icons: {
       16: 'icon/16.png',
       32: 'icon/32.png',
