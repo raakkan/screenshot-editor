@@ -87,7 +87,7 @@ const SELECTION_CSS = `
 `;
 
 export default defineContentScript({
-  matches: ['<all_urls>'],
+  matches: [],
   main() {
     // Use a global flag to prevent multiple listeners
     if ((window as any).__screenshot_selection_active) return;

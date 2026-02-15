@@ -3,13 +3,17 @@ export default defineBackground(() => {
   console.log('Screenshot Editor Pro background script loaded');
 
   // Broadcast a cleanup message to all tabs to ensure selector is gone
-  async function broadcastCleanup() {
+  // Broadcast a cleanup message to ensure selector is gone
+  async function broadcastCleanup(tabId?: number) {
     try {
-      const tabs = await browser.tabs.query({});
-      for (const tab of tabs) {
-        if (tab.id) {
-          browser.tabs.sendMessage(tab.id, { type: 'cleanup-selection' }).catch(() => { });
-        }
+      if (tabId) {
+        await browser.tabs.sendMessage(tabId, { type: 'cleanup-selection' }).catch(() => { });
+        return;
+      }
+
+      const [activeTab] = await browser.tabs.query({ active: true, currentWindow: true });
+      if (activeTab?.id) {
+        await browser.tabs.sendMessage(activeTab.id, { type: 'cleanup-selection' }).catch(() => { });
       }
     } catch (e) {
       console.error('Broadcast cleanup failed:', e);
@@ -58,13 +62,15 @@ export default defineBackground(() => {
       }
 
       await browser.storage.local.set({ capturedImage: imageDataUrl });
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
       await browser.tabs.create({ url: browser.runtime.getURL('/editor.html') });
-      await broadcastCleanup();
+      await broadcastCleanup(tab?.id);
 
       return { success: true };
     } catch (error) {
       console.error('Capture failed:', error);
-      await broadcastCleanup();
+      const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+      await broadcastCleanup(tab?.id);
       throw error;
     }
   }
